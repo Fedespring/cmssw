@@ -23,6 +23,7 @@
  */
 
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
+#include "DataFormats/Math/interface/Point3D.h"
 
 class TrajectoryStateOnSurface;
 class MuonServiceProxy;
@@ -72,8 +73,11 @@ class GlobalMuonTrackMatcher {
     double match_d(const TrajectoryStateOnSurface&, const TrajectoryStateOnSurface&) const;
     double match_Rmom(const TrajectoryStateOnSurface&, const TrajectoryStateOnSurface&) const;
     double match_Rpos(const TrajectoryStateOnSurface&, const TrajectoryStateOnSurface&) const;
+    double match_Rdir(const TrajectoryStateOnSurface&, const TrajectoryStateOnSurface&) const;
     double match_Chi2(const TrajectoryStateOnSurface&, const TrajectoryStateOnSurface&) const;
     double match_dist(const TrajectoryStateOnSurface&, const TrajectoryStateOnSurface&) const;
+    double DistanceXY(const math::XYZPoint&, const math::XYZPoint&) const;
+    double DistanceZ(const math::XYZPoint&, const math::XYZPoint&) const;
 
     std::pair<TrajectoryStateOnSurface,TrajectoryStateOnSurface> convertToTSOSTk(const TrackCand&, const TrackCand&) const;
     std::pair<TrajectoryStateOnSurface,TrajectoryStateOnSurface> convertToTSOSMuHit(const TrackCand&, const TrackCand&) const;
