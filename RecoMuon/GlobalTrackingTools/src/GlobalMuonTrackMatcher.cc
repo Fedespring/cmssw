@@ -195,21 +195,28 @@ GlobalMuonTrackMatcher::match(const TrackCand& sta,
   LogTrace(category) << "   Tk in Region " << tracks.size() << endl;
 
   for (vector<TrackCand>::const_iterator is = tracks.begin(); is != tracks.end(); ++is,iiTk++) {
+    // double vtx_distanceXY = DistanceXY(sta.second->referencePoint(),(*is).second->referencePoint());
+    // double vtx_distanceZ  = DistanceZ(sta.second->referencePoint(),(*is).second->referencePoint());
+    
+    //if (vtx_distanceXY < 0.2 || (vtx_distanceXY >= 0.2 && vtx_distanceZ < 1.)){ 
+    
     // propagate to a common surface 
     std::pair<TrajectoryStateOnSurface, TrajectoryStateOnSurface> tsosPair = convertToTSOSMuHit(sta,*is);
     LogTrace(category) << "    Tk " << iiTk << " of " << tracks.size() << "  ConvertToMuHitSurface muon isValid " << tsosPair.first.isValid() << " tk isValid " << tsosPair.second.isValid() << endl;
     if(tsosPair.first.isValid()) muonTSOS = tsosPair.first;
     cands.push_back(TrackCandWithTSOS(*is,tsosPair.second));
   }
+ 
   
   // initialize variables
   double min_chisq = 999999;
   double min_d = 999999;
   double min_de= 999999;
   double min_r_pos = 999999;
+  double min_r_dir = 999999;
   std::vector<bool> passes(cands.size(),false);
   int jj=0;
-
+  
   int iTkCand = 1;
   for (vector<TrackCandWithTSOS>::const_iterator ii = cands.begin(); ii != cands.end(); ++ii,jj++,iTkCand++) {
     
@@ -217,11 +224,12 @@ GlobalMuonTrackMatcher::match(const TrackCand& sta,
     if(!muonTSOS.isValid() || !(*ii).second.isValid()) continue;
     
     // calculate matching variables
-    double distance = match_d(muonTSOS,(*ii).second);
-    double chi2 = match_Chi2(muonTSOS,(*ii).second);
-    double loc_chi2 = match_dist(muonTSOS,(*ii).second);
-    double deltaR = match_Rpos(muonTSOS,(*ii).second);
-
+    double distance  = match_d(muonTSOS,(*ii).second);
+    double chi2      = match_Chi2(muonTSOS,(*ii).second);
+    double loc_chi2  = match_dist(muonTSOS,(*ii).second);
+    double deltaR    = match_Rpos(muonTSOS,(*ii).second);
+    double deltaRdir = match_Rdir(muonTSOS,(*ii).second);
+   
     LogTrace(category) << "   iTk " << iTkCand << " of " << cands.size() << " eta " << (*ii).second.globalPosition().eta() << " phi " << (*ii).second.globalPosition().phi() << endl; 
     LogTrace(category) << "    distance " << distance << " distance cut " << " " << endl;
     LogTrace(category) << "    chi2 " << chi2 << " chi2 cut " << " " << endl;
@@ -237,27 +245,39 @@ GlobalMuonTrackMatcher::match(const TrackCand& sta,
         passes[jj]=true;
       }
     }
+    // if( (passes[jj]==false) && (*ii).second.globalMomentum().perp()<thePt_threshold2){
+    //   LogTrace(category) << "    Enters a2" << endl;
+    //   if( ( chi2>0 && chi2< theChi2_2 ) || (distance>0 && distance<theDeltaD_2) ){
+    // 	LogTrace(category) << "    Passes a2" << endl;
+    // 	result.push_back((*ii).first);
+    // 	passes[jj] = true;
+    //   }
+    // }else{
+    //   LogTrace(category) << "    Enters a3" << endl;
+    //   if( distance>0 && distance<theDeltaD_3 && deltaR>0 && deltaR<theDeltaR_1){
+    // 	LogTrace(category) << "    Passes a3" << endl;
+    // 	result.push_back((*ii).first);
+    //     passes[jj]=true;
+    //   }
+    // }
+
     if( (passes[jj]==false) && (*ii).second.globalMomentum().perp()<thePt_threshold2){
       LogTrace(category) << "    Enters a2" << endl;
-      if( ( chi2>0 && chi2< theChi2_2 ) || (distance>0 && distance<theDeltaD_2) ){
+      if( ( deltaR>0 && deltaR< 0.1 ) || (deltaRdir>0 && deltaRdir<0.3) ){
 	LogTrace(category) << "    Passes a2" << endl;
 	result.push_back((*ii).first);
 	passes[jj] = true;
       }
-    }else{
-      LogTrace(category) << "    Enters a3" << endl;
-      if( distance>0 && distance<theDeltaD_3 && deltaR>0 && deltaR<theDeltaR_1){
-	LogTrace(category) << "    Passes a3" << endl;
-	result.push_back((*ii).first);
-        passes[jj]=true;
-      }
     }
     
     if(passes[jj]){
-      if(distance<min_d) min_d = distance;
-      if(loc_chi2<min_de) min_de = loc_chi2;
-      if(deltaR<min_r_pos) min_r_pos = deltaR;
-      if(chi2<min_chisq) min_chisq = chi2;
+      if(distance  < min_d)     min_d     = distance;
+      if(loc_chi2  < min_de)    min_de    = loc_chi2;
+      if(deltaR    < min_r_pos) min_r_pos = deltaR;
+      if(deltaRdir < min_r_dir) min_r_dir = deltaRdir;    
+      if(chi2      < min_chisq) min_chisq = chi2;
+    
+      
     }
 
   }
@@ -268,16 +288,23 @@ GlobalMuonTrackMatcher::match(const TrackCand& sta,
   if ( result.empty() ) {
     LogTrace(category) << "   Stage 1 returned 0 results";
     for (vector<TrackCandWithTSOS>::const_iterator is = cands.begin(); is != cands.end(); ++is,jj++) {
-      double deltaR = match_Rpos(muonTSOS,(*is).second);
+      double deltaR    = match_Rpos(muonTSOS,(*is).second);
+      double deltaRdir = match_Rdir(muonTSOS,(*is).second);
 
       if (muonTSOS.isValid() && (*is).second.isValid()) {
 	// check matching between tracker and muon tracks using dEta cut looser then dPhi cut 
 	LogTrace(category) << "    Stage 2 deltaR " << deltaR << " deltaEta " << fabs((*is).second.globalPosition().eta()-muonTSOS.globalPosition().eta()<1.5*theDeltaR_2) << " deltaPhi " << (fabs(deltaPhi((*is).second.globalPosition().phi(),muonTSOS.globalPosition().phi()))<theDeltaR_2) << endl;
         
-	if(fabs((*is).second.globalPosition().eta()-muonTSOS.globalPosition().eta())<1.5*theDeltaR_2
-	   &&fabs(deltaPhi((*is).second.globalPosition().phi(),muonTSOS.globalPosition().phi()))<theDeltaR_2){
+	// if(fabs((*is).second.globalPosition().eta()-muonTSOS.globalPosition().eta())<1.5*theDeltaR_2
+	//    &&fabs(deltaPhi((*is).second.globalPosition().phi(),muonTSOS.globalPosition().phi()))<theDeltaR_2){
+	//   result.push_back((*is).first);
+	//   passes[jj]=true;
+	// }
+
+
+	if( deltaR>0 && deltaR< 0.2 ) {
 	  result.push_back((*is).first);
-	  passes[jj]=true;
+	  passes[jj] = true;
 	}
       }
       
@@ -285,17 +312,17 @@ GlobalMuonTrackMatcher::match(const TrackCand& sta,
         double distance = match_d(muonTSOS,(*is).second);
         double chi2 = match_Chi2(muonTSOS,(*is).second);
         double loc_chi2 = match_dist(muonTSOS,(*is).second);
-        if(distance<min_d) min_d = distance;
-        if(loc_chi2<min_de) min_de = loc_chi2;
-        if(deltaR<min_r_pos) min_r_pos = deltaR;
-        if(chi2<min_chisq) min_chisq = chi2;
-	
+	if(distance  < min_d)     min_d     = distance;
+	if(loc_chi2  < min_de)    min_de    = loc_chi2;
+	if(deltaR    < min_r_pos) min_r_pos = deltaR;
+	if(deltaRdir < min_r_dir) min_r_dir = deltaRdir;    
+	if(chi2      < min_chisq) min_chisq = chi2;
       }
       
     }
     
   }  
-
+  
   for(vector<TrackCand>::const_iterator iTk=result.begin();
       iTk != result.end(); ++iTk) {
     LogTrace(category) << "   -----" << endl 
@@ -314,38 +341,41 @@ GlobalMuonTrackMatcher::match(const TrackCand& sta,
   // re-initialize mask counter
   jj=0;
   
-  
+  double deltaR_best=999.;
+  TrackCand cand_best;
   for (vector<TrackCandWithTSOS>::const_iterator is = cands.begin(); is != cands.end(); ++is,jj++) {
     
     if(!passes[jj]) continue;
     
-    double distance = match_d(muonTSOS,(*is).second);
-    double chi2 = match_Chi2(muonTSOS,(*is).second);
+    // double distance = match_d(muonTSOS,(*is).second);
+    // double chi2 = match_Chi2(muonTSOS,(*is).second);
+
     //unused    double loc_chi2 = match_dist(muonTSOS,(*is).second);
-    double deltaR = match_Rpos(muonTSOS,(*is).second);
-    
+    double deltaR    = match_Rpos(muonTSOS,(*is).second);
+    if (deltaR< deltaR_best){
+      deltaR_best = deltaR;
+      cand_best = (*is).first;
+    }    
     // compute quality as the relative ratio to the minimum found for each variable
     
-    int qual = (int)(chi2/min_chisq + distance/min_d + deltaR/min_r_pos);
-    int n_min = ((chi2/min_chisq==1)?1:0) + ((distance/min_d==1)?1:0) + ((deltaR/min_r_pos==1)?1:0);
+    // int qual = (int)(chi2/min_chisq + distance/min_d + deltaR/min_r_pos);
+    // int n_min = ((chi2/min_chisq==1)?1:0) + ((distance/min_d==1)?1:0) + ((deltaR/min_r_pos==1)?1:0);
     
-    if(n_min == 3){
-      result.push_back((*is).first);
-    }
-    
-    if(n_min == 2 && qual < theQual_1 ){
-      result.push_back((*is).first);
-    }
-    
-    if(n_min == 1 && qual < theQual_2 ){
-      result.push_back((*is).first);
-    }
-    
-    if(n_min == 0 && qual < theQual_3 ){
-      result.push_back((*is).first);
-    }
-    
+    // if(n_min == 3){
+    //   result.push_back((*is).first);
+    // }
+    // if(n_min == 2 && qual < theQual_1 ){
+    //   result.push_back((*is).first);
+    // }
+    // if(n_min == 1 && qual < theQual_2 ){
+    //   result.push_back((*is).first);
+    // }
+    // if(n_min == 0 && qual < theQual_3 ){
+    //   result.push_back((*is).first);
+    // }
   }
+  result.push_back(cand_best);
+
 
   for(vector<TrackCand>::const_iterator iTk=result.begin();
       iTk != result.end(); ++iTk) {
@@ -609,6 +639,19 @@ GlobalMuonTrackMatcher::match_Rpos(const TrajectoryStateOnSurface& sta,
 
 }
 
+//
+// calculate Delta_R of two directions of the trajectory states
+//
+double 
+GlobalMuonTrackMatcher::match_Rdir(const TrajectoryStateOnSurface& sta, 
+				   const TrajectoryStateOnSurface& tk) const {
+  
+  if ( !sta.isValid() || !tk.isValid() ) return -1;
+  return (deltaR<double>(sta.globalDirection().eta(),sta.globalDirection().phi(),
+			 tk.globalDirection().eta(),tk.globalDirection().phi()));
+  
+}
+
 
 //
 // calculate the distance in global position of two trajectory states
@@ -663,5 +706,21 @@ GlobalMuonTrackMatcher::match_dist(const TrajectoryStateOnSurface& sta,
    }
  
    return ROOT::Math::Similarity(v,m);
-
 }
+
+ 
+double GlobalMuonTrackMatcher::DistanceXY(const math::XYZPoint& v1, const math::XYZPoint& v2)const {
+  
+  double uno =  sqrt((v1.x() + v1.y())*(v1.x() + v1.y())); 
+  double due =  sqrt((v2.x() + v2.y())*(v2.x() + v2.y())); 
+
+  return (fabs(uno-due));
+ 
+}
+
+double GlobalMuonTrackMatcher::DistanceZ(const math::XYZPoint& v1, const math::XYZPoint& v2)const {
+    
+  double Z =  fabs(v1.z() - v2.z()); 
+  return Z;
+}
+
