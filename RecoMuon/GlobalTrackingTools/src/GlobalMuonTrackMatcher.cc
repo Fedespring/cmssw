@@ -263,7 +263,8 @@ GlobalMuonTrackMatcher::match(const TrackCand& sta,
 
     if( (passes[jj]==false) && (*ii).second.globalMomentum().perp()<thePt_threshold2){
       LogTrace(category) << "    Enters a2" << endl;
-      if( ( deltaR>0 && deltaR< 0.1 ) || (deltaRdir>0 && deltaRdir<0.3) ){
+      // if( ( deltaR>0 && deltaR< 0.1 ) || (deltaRdir>0 && deltaRdir<0.3) ){  GMT_v2 (at the end the best is selected by best deltaR)
+      if( ( deltaR>0. && deltaR< 0.2 ) && (deltaRdir>0. && deltaRdir<0.2) ){ // GMT_v3 (at the end the best is selected by best deltaR)
 	LogTrace(category) << "    Passes a2" << endl;
 	result.push_back((*ii).first);
 	passes[jj] = true;
@@ -283,45 +284,46 @@ GlobalMuonTrackMatcher::match(const TrackCand& sta,
   }
   
   // re-initialize mask counter
-  jj=0;
+  // jj=0;
   
-  if ( result.empty() ) {
-    LogTrace(category) << "   Stage 1 returned 0 results";
-    for (vector<TrackCandWithTSOS>::const_iterator is = cands.begin(); is != cands.end(); ++is,jj++) {
-      double deltaR    = match_Rpos(muonTSOS,(*is).second);
-      double deltaRdir = match_Rdir(muonTSOS,(*is).second);
+  // if ( result.empty() ) {
+  //   LogTrace(category) << "   Stage 1 returned 0 results";
+  //   for (vector<TrackCandWithTSOS>::const_iterator is = cands.begin(); is != cands.end(); ++is,jj++) {
+  //     double deltaR    = match_Rpos(muonTSOS,(*is).second);
+  //     double deltaRdir = match_Rdir(muonTSOS,(*is).second);
 
-      if (muonTSOS.isValid() && (*is).second.isValid()) {
-	// check matching between tracker and muon tracks using dEta cut looser then dPhi cut 
-	LogTrace(category) << "    Stage 2 deltaR " << deltaR << " deltaEta " << fabs((*is).second.globalPosition().eta()-muonTSOS.globalPosition().eta()<1.5*theDeltaR_2) << " deltaPhi " << (fabs(deltaPhi((*is).second.globalPosition().phi(),muonTSOS.globalPosition().phi()))<theDeltaR_2) << endl;
+  //     if (muonTSOS.isValid() && (*is).second.isValid()) {
+  // 	// check matching between tracker and muon tracks using dEta cut looser then dPhi cut 
+  // 	LogTrace(category) << "    Stage 2 deltaR " << deltaR << " deltaEta " << fabs((*is).second.globalPosition().eta()-muonTSOS.globalPosition().eta()<1.5*theDeltaR_2) << " deltaPhi " << (fabs(deltaPhi((*is).second.globalPosition().phi(),muonTSOS.globalPosition().phi()))<theDeltaR_2) << endl;
         
-	// if(fabs((*is).second.globalPosition().eta()-muonTSOS.globalPosition().eta())<1.5*theDeltaR_2
-	//    &&fabs(deltaPhi((*is).second.globalPosition().phi(),muonTSOS.globalPosition().phi()))<theDeltaR_2){
-	//   result.push_back((*is).first);
-	//   passes[jj]=true;
-	// }
+  // 	// if(fabs((*is).second.globalPosition().eta()-muonTSOS.globalPosition().eta())<1.5*theDeltaR_2
+  // 	//    &&fabs(deltaPhi((*is).second.globalPosition().phi(),muonTSOS.globalPosition().phi()))<theDeltaR_2){
+  // 	//   result.push_back((*is).first);
+  // 	//   passes[jj]=true;
+  // 	// }
 
 
-	if( deltaR>0 && deltaR< 0.2 ) {
-	  result.push_back((*is).first);
-	  passes[jj] = true;
-	}
-      }
+  // 	if( deltaR>0 && deltaR< 0.2 ) {
+  // 	  result.push_back((*is).first);
+  // 	  passes[jj] = true;
+  // 	}
+  //     }
       
-      if(passes[jj]){
-        double distance = match_d(muonTSOS,(*is).second);
-        double chi2 = match_Chi2(muonTSOS,(*is).second);
-        double loc_chi2 = match_dist(muonTSOS,(*is).second);
-	if(distance  < min_d)     min_d     = distance;
-	if(loc_chi2  < min_de)    min_de    = loc_chi2;
-	if(deltaR    < min_r_pos) min_r_pos = deltaR;
-	if(deltaRdir < min_r_dir) min_r_dir = deltaRdir;    
-	if(chi2      < min_chisq) min_chisq = chi2;
-      }
+  //     if(passes[jj]){
+  //       double distance = match_d(muonTSOS,(*is).second);
+  //       double chi2 = match_Chi2(muonTSOS,(*is).second);
+  //       double loc_chi2 = match_dist(muonTSOS,(*is).second);
+  // 	if(distance  < min_d)     min_d     = distance;
+  // 	if(loc_chi2  < min_de)    min_de    = loc_chi2;
+  // 	if(deltaR    < min_r_pos) min_r_pos = deltaR;
+  // 	if(deltaRdir < min_r_dir) min_r_dir = deltaRdir;    
+  // 	if(chi2      < min_chisq) min_chisq = chi2;
+  //     }
       
-    }
+  //   }
     
-  }  
+  // } 
+  
   
   for(vector<TrackCand>::const_iterator iTk=result.begin();
       iTk != result.end(); ++iTk) {
