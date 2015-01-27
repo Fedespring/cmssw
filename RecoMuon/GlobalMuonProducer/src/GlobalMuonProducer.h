@@ -24,6 +24,10 @@
 #include "TrackingTools/PatternTools/interface/TrajTrackAssociation.h"
 #include "DataFormats/TrackReco/interface/TrackToTrackMap.h"
 
+#include "DataFormats/MuonReco/interface/MuonTimeExtra.h"
+#include "DataFormats/MuonReco/interface/MuonTimeExtraMap.h"
+
+
 namespace edm {class ParameterSet; class Event; class EventSetup;}
 
 class MuonTrackFinder;
@@ -43,7 +47,11 @@ class GlobalMuonProducer : public edm::stream::EDProducer<> {
   virtual void produce(edm::Event&, const edm::EventSetup&) override;
   
  private:
-
+  //Timing maps for the STA
+  edm::Handle<reco::MuonTimeExtraMap> timeMapUpdated;
+  edm::Handle<reco::MuonTimeExtraMap> timeMapRegular;
+  edm::Handle<reco::MuonTimeExtraMap> timeMapSETUpdated;
+  edm::Handle<reco::MuonTimeExtraMap> timeMapSETRegular;
 
   edm::InputTag theSTACollectionLabel    ;
   /// STA Tokens
@@ -51,9 +59,6 @@ class GlobalMuonProducer : public edm::stream::EDProducer<> {
   edm::EDGetTokenT<std::vector<Trajectory> > staMuonsTrajToken;
   edm::EDGetTokenT<TrajTrackAssociationCollection> staAssoMapToken;
   edm::EDGetTokenT<reco::TrackToTrackMap> updatedStaAssoMapToken;
-
-
-
 
   MuonTrackFinder* theTrackFinder;
     
