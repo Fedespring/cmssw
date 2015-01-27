@@ -47,12 +47,10 @@ GlobalMuonProducer::GlobalMuonProducer(const ParameterSet& parameterSet) {
   staMuonsTrajToken=consumes<std::vector<Trajectory> >(parameterSet.getParameter<InputTag>("MuonCollectionLabel").label()); 
   staAssoMapToken=consumes<TrajTrackAssociationCollection>(parameterSet.getParameter<InputTag>("MuonCollectionLabel").label()); 
   updatedStaAssoMapToken=consumes<reco::TrackToTrackMap>(parameterSet.getParameter<InputTag>("MuonCollectionLabel").label());
- 
-
 
   // service parameters
   ParameterSet serviceParameters = parameterSet.getParameter<ParameterSet>("ServiceParameters");
-
+  
   // TrackLoader parameters
   ParameterSet trackLoaderParameters = parameterSet.getParameter<ParameterSet>("TrackLoaderParameters");
   
@@ -63,7 +61,7 @@ GlobalMuonProducer::GlobalMuonProducer(const ParameterSet& parameterSet) {
   edm::ConsumesCollector iC = consumesCollector();
   MuonTrackLoader* mtl = new MuonTrackLoader(trackLoaderParameters,iC,theService);
   GlobalMuonTrajectoryBuilder* gmtb = new GlobalMuonTrajectoryBuilder(trajectoryBuilderParameters, theService,iC);
-
+  
   theTrackFinder = new MuonTrackFinder(gmtb, mtl);
 
   setAlias(parameterSet.getParameter<std::string>("@module_label"));
@@ -103,16 +101,22 @@ void GlobalMuonProducer::produce(Event& event, const EventSetup& eventSetup) {
   Handle<reco::TrackCollection> staMuons;
   event.getByToken(staMuonsToken,staMuons);
 
+  //Timing Maps for the STA
+  event.getByLabel("staUpdAtVtx","combined",timeMapUpdated);
+  event.getByLabel("staRegular","combined",timeMapRegular);
+  event.getByLabel("staSETUpdAtVtx","combined",timeMapSETUpdated);
+  event.getByLabel("staSETRegular","combined",timeMapSETRegular);
+ 
   Handle<vector<Trajectory> > staMuonsTraj;
-
+  
   LogTrace(metname) << "Taking " << staMuons->size() << " Stand Alone Muons "<<endl;
-
+  
   vector<MuonTrajectoryBuilder::TrackCand> staTrackCands;
-
+  
   edm::Handle<TrajTrackAssociationCollection> staAssoMap;
-
+  
   edm::Handle<reco::TrackToTrackMap> updatedStaAssoMap;
-
+  
   if( event.getByToken(staMuonsTrajToken, staMuonsTraj) && event.getByToken(staAssoMapToken,staAssoMap) && event.getByToken(updatedStaAssoMapToken,updatedStaAssoMap) ) {    
     
     for(TrajTrackAssociationCollection::const_iterator it = staAssoMap->begin(); it != staAssoMap->end(); ++it){	
@@ -122,32 +126,51 @@ void GlobalMuonProducer::produce(Event& event, const EventSetup& eventSetup) {
       reco::TrackToTrackMap::const_iterator iEnd;
       reco::TrackToTrackMap::const_iterator iii;
       if ( theSTACollectionLabel.instance() == "UpdatedAtVtx") {
-	iEnd = updatedStaAssoMap->end();
-	iii = updatedStaAssoMap->find(it->val);
-	if (iii != iEnd ) tkUpdated = (*updatedStaAssoMap)[it->val] ;
+  	iEnd = updatedStaAssoMap->end();
+  	iii = updatedStaAssoMap->find(it->val);
+  	if (iii != iEnd ) tkUpdated = (*updatedStaAssoMap)[it->val] ;
       }
       
       int etaFlip1 = ((tkUpdated.isNonnull() && tkRegular.isNonnull()) && ( (tkUpdated->eta() * tkRegular->eta() ) < 0)) ? -1 : 1; 
       
       const reco::TrackRef tk = ( tkUpdated.isNonnull() && etaFlip1==1 ) ? tkUpdated : tkRegular ;
-
-      MuonTrajectoryBuilder::TrackCand tkCand = MuonTrajectoryBuilder::TrackCand((Trajectory*)(0),tk);
-      if( traj->isValid() ) tkCand.first = &*traj ;
-      staTrackCands.push_back(tkCand);
+      
+      reco::MuonTimeExtra timec;
+      if( theSTACollectionLabel.label() == "standAloneSETMuons"){
+	timec = ( tkUpdated.isNonnull() && etaFlip1==1 ) ? timeMapSETUpdated->get(tk.key()) : timeMapSETRegular->get(tk.key()) ;
+      }else{
+	timec = ( tkUpdated.isNonnull() && etaFlip1==1 ) ? timeMapUpdated->get(tk.key()) : timeMapRegular->get(tk.key()) ;
+      }
+      
+      // OOT Filter (tight cut in CSC region, loose cut in DT region)
+      if( (fabs(tk->eta())<=1.2  && (fabs(timec.timeAtIpInOut()) < (25 + timec.timeAtIpInOutErr())))  || 
+	  (fabs(tk->eta())> 1.2  && (fabs(timec.timeAtIpInOut()) + timec.timeAtIpInOutErr()) < 12.5)) {
+	MuonTrajectoryBuilder::TrackCand tkCand = MuonTrajectoryBuilder::TrackCand((Trajectory*)(0),tk);
+	if( traj->isValid() ) tkCand.first = &*traj ;
+	staTrackCands.push_back(tkCand);
+      }
     }
   } else {
     for ( unsigned int position = 0; position != staMuons->size(); ++position ) {
-      reco::TrackRef staTrackRef(staMuons,position);
-      MuonTrajectoryBuilder::TrackCand staCand = MuonTrajectoryBuilder::TrackCand((Trajectory*)(0),staTrackRef);
-      staTrackCands.push_back(staCand); 
+      reco::TrackRef staTrackRef(staMuons,position); 
+      
+      // OOT Filter
+      reco::MuonTimeExtra timec = timeMapUpdated->get(staTrackRef.key());
+      if( (fabs(staTrackRef->eta())<=1.2  && (fabs(timec.timeAtIpInOut()) < (25 + timec.timeAtIpInOutErr())))  || 
+	  (fabs(staTrackRef->eta())> 1.2  && (fabs(timec.timeAtIpInOut()) + timec.timeAtIpInOutErr()) < 12.5)) {
+	
+	MuonTrajectoryBuilder::TrackCand staCand = MuonTrajectoryBuilder::TrackCand((Trajectory*)(0),staTrackRef);
+	staTrackCands.push_back(staCand); 
+      }
     }
   }
-    
+  
   theTrackFinder->reconstruct(staTrackCands, event);      
   
   
   LogTrace(metname)<<"Event loaded"
-                   <<"================================"
-                   <<endl<<endl;
-    
+		   <<"================================"
+		   <<endl<<endl;
+  
 }
+
