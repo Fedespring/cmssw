@@ -4,11 +4,14 @@ from RecoMuon.MuonSeedGenerator.SETMuonSeed_cff import *
 
 from RecoMuon.StandAloneMuonProducer.standAloneMuons_cff import standAloneSETMuons
 
+# Timing maps for standalone
+from RecoMuon.GlobalMuonProducer.standAloneTiming_cfi import*
+
 from RecoMuon.GlobalMuonProducer.GlobalMuonProducer_cff import *
 globalSETMuons = globalMuons.clone()
 globalSETMuons.MuonCollectionLabel = cms.InputTag("standAloneSETMuons","UpdatedAtVtx")
 
-muontracking_with_SET = cms.Sequence(SETMuonSeed*standAloneSETMuons*globalSETMuons)
+muontracking_with_SET = cms.Sequence(SETMuonSeed*standAloneSETMuons*staSETRegular*staSETUpdAtVtx*globalSETMuons)
 
 from RecoMuon.MuonIdentification.muonIdProducerSequence_cff import *
 muonsWithSET = muons1stStep.clone()
