@@ -19,6 +19,8 @@ displacedStandAloneMuons = standAloneMuons.clone()
 displacedStandAloneMuons.InputObjects = cms.InputTag("displacedMuonSeeds")
 displacedStandAloneMuons.MuonTrajectoryBuilder = cms.string("StandAloneMuonTrajectoryBuilder")
 displacedStandAloneMuons.TrackLoaderParameters.VertexConstraint = cms.bool(False) 
+# Timing maps for standalone
+from RecoMuon.GlobalMuonProducer.standAloneTiming_cfi import*
 
 # Global muon track producer
 from RecoMuon.GlobalMuonProducer.GlobalMuonProducer_cff import *
@@ -45,7 +47,7 @@ from RecoMuon.MuonIsolationProducers.muIsolation_cff import *
 
 # Muon Tracking sequence
 standalonemuontracking = cms.Sequence(standAloneMuonSeeds*standAloneMuons*refittedStandAloneMuons*displacedMuonSeeds*displacedStandAloneMuons)
-globalmuontracking = cms.Sequence(globalMuons*tevMuons)
+globalmuontracking = cms.Sequence(staUpdAtVtx*staRegular*globalMuons*tevMuons)
 muontracking = cms.Sequence(standalonemuontracking*globalmuontracking)
 
 # Muon Reconstruction
