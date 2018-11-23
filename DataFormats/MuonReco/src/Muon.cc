@@ -62,75 +62,70 @@ int Muon::numberOfChambersCSCorDT() const
 
 int Muon::numberOfMatches( unsigned int type ) const
 {
-   int matches(0);
-   for( std::vector<MuonChamberMatch>::const_iterator chamberMatch = muMatches_.begin();
-         chamberMatch != muMatches_.end(); chamberMatch++ )
-   {
+  int matches(0);
+  for( std::vector<MuonChamberMatch>::const_iterator chamberMatch = muMatches_.begin();
+       chamberMatch != muMatches_.end(); chamberMatch++ )
+    {
       if(type == RPCHitAndTrackArbitration) {
-         if(chamberMatch->rpcMatches.empty()) continue;
-         matches += chamberMatch->rpcMatches.size();
-         continue;
+	if(chamberMatch->rpcMatches.empty()) continue;
+	matches += chamberMatch->rpcMatches.size();
+	continue;
       }
       if(type == ME0SegmentAndTrackArbitration) {
-         if(chamberMatch->me0Matches.empty()) continue;
-	  matches += chamberMatch->me0Matches.size();
+	if(chamberMatch->me0Matches.empty()) continue;
+	matches += chamberMatch->me0Matches.size();
 	continue;
       }
       if(type == GEMSegmentAndTrackArbitration) {
-         if(chamberMatch->gemMatches.empty()) continue;
-	  matches += chamberMatch->gemMatches.size();
+	if(chamberMatch->gemMatches.empty()) continue;
+	matches += chamberMatch->gemMatches.size();
 	continue;
       }
-
+      
       if(chamberMatch->segmentMatches.empty()) continue;
       if(type == NoArbitration) {
-         matches++;
-         continue;
+	matches++;
+	continue;
       }
       
       for( std::vector<MuonSegmentMatch>::const_iterator segmentMatch = chamberMatch->segmentMatches.begin();
-            segmentMatch != chamberMatch->segmentMatches.end(); segmentMatch++ )
-      {
-         if(type == SegmentArbitration)
+	   segmentMatch != chamberMatch->segmentMatches.end(); segmentMatch++ )
+	{
+	  if(type == SegmentArbitration)
             if(segmentMatch->isMask(MuonSegmentMatch::BestInChamberByDR)) {
-               matches++;
-               break;
+	      matches++;
+	      break;
             }
-         if(type == SegmentAndTrackArbitration)
+	  if(type == SegmentAndTrackArbitration)
             if(segmentMatch->isMask(MuonSegmentMatch::BestInChamberByDR) &&
-                  segmentMatch->isMask(MuonSegmentMatch::BelongsToTrackByDR)) {
-               matches++;
-               break;
+	       segmentMatch->isMask(MuonSegmentMatch::BelongsToTrackByDR)) {
+	      matches++;
+	      break;
             }
-	 if(type == SegmentAndTrackArbitrationCleaned)
-	   if(segmentMatch->isMask(MuonSegmentMatch::BestInChamberByDR) &&
-	         segmentMatch->isMask(MuonSegmentMatch::BelongsToTrackByDR) && 
-	         segmentMatch->isMask(MuonSegmentMatch::BelongsToTrackByCleaning)) {
-	     matches++;
-	     break;
-	   }
-         if(type > 1<<7)
-            if(segmentMatch->isMask(type)) {
-               matches++;
-               break;
-            }
-      }
+	  if(type == SegmentAndTrackArbitrationCleaned)
+	    if(segmentMatch->isMask(MuonSegmentMatch::BestInChamberByDR) &&
+	       segmentMatch->isMask(MuonSegmentMatch::BelongsToTrackByDR) && 
+	       segmentMatch->isMask(MuonSegmentMatch::BelongsToTrackByCleaning)) {
+	      matches++;
+	      break;
+	    }
+	}
    }
-
+   
    return matches;
 }
 
 int Muon::numberOfMatchedStations( ArbitrationType type ) const
 {
-   int stations(0);
-
-   unsigned int theStationMask = stationMask(type);
-   // eight stations, eight bits
-   for(int it = 0; it < 8; ++it)
-      if (theStationMask & 1<<it)
-         ++stations;
-
-   return stations;
+  int stations(0);
+  
+  unsigned int theStationMask = stationMask(type);
+  // eight stations, eight bits
+  for(int it = 0; it < 8; ++it)
+    if (theStationMask & 1<<it)
+      ++stations;
+  
+  return stations;
 }
 
 unsigned int Muon::expectedNnumberOfMatchedStations( float minDistanceFromEdge ) const 
